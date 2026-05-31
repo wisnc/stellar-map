@@ -1,6 +1,22 @@
 # Stellar Map
 
-a fully offline stellarium inspired planetarium for the **M5Stack Cardputer-ADV** Renders stars visible to the naked eye (mag ≤ 6.5), constellation lines, some planets, and the Moon.
+a fully offline stellarium inspired planetarium for the **M5Stack Cardputer-ADV** Renders stars visible to the naked eye (mag ≤ 6.5), constellation lines, some planets, and the Moon. Supports CapLora for time and position fix
+
+---
+
+BOOT Start
+
+<img src="boot-splash.png" width="600">
+
+<div>
+  <img src="stellar-map1.bmp" width="200" />
+  <img src="stellar-map2.bmp" width="200" />
+  <img src="stellar-map3.bmp" width="200" />
+</div>
+
+centered view with detail
+
+<img src="stellar-map4.bmp" width="600">
 
 ## Build
 
@@ -49,7 +65,10 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 `space` pause time
 
+`BtnG0` to take a screenshot and save it to /stellar-map/<time>_AZ_ALT.bmp in bitmap format
+
+if CapLora is available, be sure to press `g` to start polling for time and location. **keep in mind that the polling will cause Stellar Map to stutter** so toggle it off when satisfied. 
 
 ### credits
 
-thanks for HYG databasee and Stellarium modern constellation lines.
+thanks for HYG database, OpenNGC, and Stellarium modern constellation lines.
