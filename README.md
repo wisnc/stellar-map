@@ -1,71 +1,60 @@
-# Cardputer Stellar
+# Stellar Map
 
 Offline naked-eye planetarium for the **M5Stack Cardputer-Adv** (ESP32-S3, no PSRAM).
 Renders stars (mag ≤ 6.5), constellation lines, the Sun, Moon (with phase), and the
 five naked-eye planets for any UTC instant and the Cebu City horizon, with keyboard
 pan/zoom, time scrub, and tap-to-inspect.
 
+a fully offline stellarium inspired planetarium for the **M5Stack Cardputer-ADV** Renders stars visible to the naked eye (mag ≤ 6.5), constellation lines, some planets, and the Moon.
+
 ## Build
 
+```
+git clone https://github.com/wisnc/stellar-map
+cd stellar-map
+pio run
+```
 
-pio run -t upload        # build + flash over USB-C
-pio device monitor       # 115200 baud
+## Config
+
+on initial boot, a `/.stellar_config` file will be created. make sure to edit it with an editor and input your longitude and latitude.
+
+check out [crub](https://github.com/wisnc/crub) for a firmware flasher with a built in editor
 
 
-PlatformIO env `cardputer-adv`. First build pulls `M5Cardputer` (+ `M5Unified`,
-`M5GFX`). The star catalog lives in flash (`src/data/*.h`, ~0.6 MB of `.rodata`); the
-`default_8MB` partition leaves ample app space.
 
 ## Boot
 
-Prompts for UTC as **`YYMMDDHHMM`** (10 digits), e.g. `2605291930` = 2026-05-29
-19:30 UTC. Century is 20xx, seconds 0. Time then advances in real time from that
-instant. No battery-backed RTC, so the time is re-entered each boot.
+Prompts for UTC as **`YYMMDDHHMM`** e.g. for May 31 2026 12AM UTC, input `2605310000`
+
+No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also used because it is cleaner, and CapLora retrieves UTC first before your local time since fix takes longer
 
 ## Controls
 
 
-,  pan left      ;  pan up        =  zoom in       [  time -30 min
-/  pan right     .  pan down      -  zoom out       ]  time +30 min
-enter  select nearest star to the reticle (recenters + info panel)
-backspace  dismiss panel        space  pause / resume time
+`; , . /` pan (arrow keys) controls AZ and ALT
+
+`r` time rate - 1x 60x 600x 3600x
+
+`l` cycles labels - no label, constellations and planets, all, (if CapLora is available) all + satellites
+
+`s` scope / simulation (still barebones, but simulates what object looks like)
+
+`i` IMU control
+
+`g` GNSS polling toggle (off by default. if CapLora is available, press it to fetch for time and location)
+
+`p` when time is resolved, 'p' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
+
+`t` when time is resolved, 't' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
+
+`enter` to select nearest center object and keeps it centered and shows information panel
+
+`del` dismiss
+
+`space` pause time
 
 
-Panning/zoom use tap-and-glide: each keypress nudges a camera target and the view
-eases toward it. Selecting a star slides an info panel in from the left (label,
-magnitude, spectral type, constellation, RA/Dec, live alt/az) and parks the star
-beside it. The lower-right HUD shows look altitude, azimuth, and 16-point heading.
+### credits
 
-## Accuracy
-
-Positions use a low-precision Keplerian ephemeris (Schlyter) — arcminute-class, more
-than enough for naked-eye work. Validated: Sun seasonal declinations (±23.44°), Moon
-illumination at known new/full moons, and Venus/Mars/Jupiter positions + magnitudes.
-Star positions are J2000 (no precession applied — intended for near-term scrubbing).
-Saturn's ring brightening is ignored (mag may be ~0.5 off). Moon and Sun discs are
-drawn at a fixed minimum radius so the phase is visible (not to angular scale).
-
-## Regenerating the catalog
-
-
-python3 tools/gen_catalog.py [mag_limit]    # default 6.5
-
-
-Pulls the HYG database and Stellarium western constellation lines, emits
-`src/data/star_catalog.h`, `star_names.h`, `constellations.h`. A lower magnitude
-limit yields fewer stars and less flash use.
-
-## On-device verification
-
-The math is validated on host; these depend on the board and may need a small tweak:
-
-1. **Keyboard symbol keys** — digit/`, ; . / - = [ ]` reads come from the keyboard
-   `word` buffer; `enter`/`del`/`space` from its flags. If a key reads oddly, the fix
-   is localized to `handle_char` / `boot_prompt` in `main.cpp`.
-2. **HUD blend** — the translucent HUD uses `readPixel`/`drawPixel` over a small rect
-   (`blend_dark_rect`); confirm `M5Canvas` readback behaves on the 16bpp sprite.
-3. **GFX API names** — `begin(cfg, true)`, `keysState()` fields, text datums, and
-   `&fonts::Font0` follow M5Cardputer/M5GFX conventions.
-
-Memory: one 240×135×16bpp canvas (~64 KB SRAM); catalog stays in flash. No large
-heap allocations.
+thanks for HYG databasee and Stellarium modern constellation lines.
