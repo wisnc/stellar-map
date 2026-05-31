@@ -1,10 +1,5 @@
 # Stellar Map
 
-Offline naked-eye planetarium for the **M5Stack Cardputer-Adv** (ESP32-S3, no PSRAM).
-Renders stars (mag ≤ 6.5), constellation lines, the Sun, Moon (with phase), and the
-five naked-eye planets for any UTC instant and the Cebu City horizon, with keyboard
-pan/zoom, time scrub, and tap-to-inspect.
-
 a fully offline stellarium inspired planetarium for the **M5Stack Cardputer-ADV** Renders stars visible to the naked eye (mag ≤ 6.5), constellation lines, some planets, and the Moon.
 
 ## Build
