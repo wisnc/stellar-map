@@ -74,7 +74,7 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 `space` pause time
 
-`BtnG0` to take a screenshot and save it to /stellar-map/<time>_AZ_ALT.bmp in bitmap format
+`BtnG0` to take a screenshot and save it to /stellar-map/DATETIME_AZ_ALT.bmp in bitmap format
 
 if CapLora is available, be sure to press `g` to start polling for time and location. **keep in mind that the polling will cause Stellar Map to stutter** so toggle it off when satisfied. 
 
