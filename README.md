@@ -4,8 +4,6 @@ a fully offline stellarium inspired planetarium for the **M5Stack Cardputer-ADV*
 
 ---
 
-BOOT Start
-
 <img src="boot-splash.png" width="600">
 
 <div>
@@ -14,9 +12,20 @@ BOOT Start
   <img src="stellar-map3.bmp" width="200" />
 </div>
 
+---
+
 centered view with detail
 
 <img src="stellar-map4.bmp" width="600">
+
+saturn scope/simulation
+
+<img src="saturn.bmp" width="600">
+
+
+---
+
+
 
 ## Build
 
