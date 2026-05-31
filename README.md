@@ -54,6 +54,8 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 `; , . /` pan (arrow keys) controls AZ and ALT
 
+`= -` to zoom in and out respectively
+
 `r` time rate - 1x 60x 600x 3600x
 
 `l` cycles labels - no label, constellations and planets, all, (if CapLora is available) all + satellites
