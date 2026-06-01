@@ -82,6 +82,6 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 if CapLora is available, be sure to press `g` to start polling for time and location. **keep in mind that the polling will cause Stellar Map to stutter** so toggle it off when satisfied. 
 
-### credits
+### Acknowledgements
 
 thanks for HYG database, OpenNGC, and Stellarium modern constellation lines.
