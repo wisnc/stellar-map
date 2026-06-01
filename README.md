@@ -66,7 +66,7 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 `g` GNSS polling toggle (off by default. if CapLora is available, press it to fetch for time and location)
 
-`p` when time is resolved, 'p' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
+`p` when position is resolved, 'p' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
 
 `t` when time is resolved, 't' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
 
