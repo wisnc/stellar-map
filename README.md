@@ -24,8 +24,10 @@ saturn scope/simulation
 
 search for alpha centauri
 
-<img src="search.bmp" width="300">
-<img src="result.bmp" width="300">
+<div>
+	<img src="search.bmp" width="300">
+	<img src="result.bmp" width="300">
+</div>
 
 ---
 
