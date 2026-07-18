@@ -10,6 +10,9 @@
 #include "gnss.h"
 #include "storage.h"
 #include "boot_splash.h"
+#include "search.h"
+#include "data/search_index.h"
+#include "data/constellations.h"
 
 static M5Canvas canvas(&M5Cardputer.Display);
 
@@ -27,6 +30,7 @@ static bool     g_follow = false;
 static CenterObj g_centerB = { -1, 0, 0, false };
 static float    g_lat = DEF_LAT;
 static float    g_lon = DEF_LON;
+static SiteConfig g_site;
 static bool     g_g0Last = true;
 static bool     g_gnssOn = false;
 static char     g_msg[48] = "";
@@ -63,24 +67,54 @@ static void draw_left(const char* s, int x, int y, uint16_t color) {
 
 static void boot_prompt() {
   String buf;
+  if (g_site.last_date > 0) {
+    char db[8];
+    snprintf(db, sizeof(db), "%06d", g_site.last_date);
+    buf = db;
+  }
+  int prefillLen = buf.length();
+  int off = g_site.utc_offset_min;
   bool done = false;
   while (!done) {
     M5Cardputer.update();
     gnss_poll();
     if (M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed()) {
       auto ks = M5Cardputer.Keyboard.keysState();
-      for (char c : ks.word)
-        if (c >= '0' && c <= '9' && buf.length() < 10) buf += c;
-      if (ks.del && buf.length() > 0) buf.remove(buf.length() - 1);
+      for (char c : ks.word) {
+        if (c >= '0' && c <= '9') { if (buf.length() < 10) buf += c; }
+        else if (c == KEY_PAN_UP)    off += 60;
+        else if (c == KEY_PAN_DOWN)  off -= 60;
+        else if (c == KEY_PAN_RIGHT) off += 15;
+        else if (c == KEY_PAN_LEFT)  off -= 15;
+      }
+      if (off < UTC_OFFSET_MIN_LIMIT) off = UTC_OFFSET_MIN_LIMIT;
+      if (off > UTC_OFFSET_MAX_LIMIT) off = UTC_OFFSET_MAX_LIMIT;
+      if (ks.del && buf.length() > 0) {
+        buf.remove(buf.length() - 1);
+        if ((int)buf.length() < prefillLen) prefillLen = buf.length();
+      }
       if (ks.enter && buf.length() == 10) done = true;
     }
     canvas.fillScreen(COL_BG);
-    draw_centered("ENTER UTC  (YYMMDDHHMM)", 12, COL_ACCENT);
-    String shown = buf + String("__________").substring(buf.length());
-    draw_centered(shown.c_str(), 26, COL_STAR);
-    draw_centered("[enter] to start", 38, COL_LABEL);
+    draw_centered("ENTER LOCAL TIME  (YYMMDDHHMM)", 10, COL_ACCENT);
 
-    int x = 10, y = 50;
+    String shown = buf + String("__________").substring(buf.length());
+    canvas.setTextDatum(middle_left);
+    int px = CENTER_X - canvas.textWidth(shown) / 2;
+    for (int i = 0; i < (int)shown.length(); i++) {
+      char cb[2] = { shown[i], 0 };
+      canvas.setTextColor(i < prefillLen ? COL_LABEL : COL_STAR);
+      canvas.drawString(cb, px, 24);
+      px += canvas.textWidth(cb);
+    }
+
+    char ub[16];
+    snprintf(ub, sizeof(ub), "UTC%c%02d:%02d", off < 0 ? '-' : '+', abs(off) / 60, abs(off) % 60);
+    draw_centered(ub, 36, COL_ACCENT);
+    draw_centered("up/down hour   left/right 15min", 46, COL_LABEL);
+    draw_centered("[enter] to start", 56, COL_LABEL);
+
+    int x = 10, y = 70;
     draw_left("pan ,;./   zoom =/-   time [ ]",   x, y, COL_LABEL); y += 10;
     draw_left("r rate  l labels  s scope  i imu", x, y, COL_LABEL); y += 10;
     draw_left("g gnss on/off  p pos  t time",     x, y, COL_LABEL); y += 10;
@@ -90,17 +124,17 @@ static void boot_prompt() {
     {
       const char* L[3] = { "Scroll", "SD", "LoRa" };
       bool ok[3] = { scroll_ok(), storage_ok(), gnss_present() };
-      const int sy = 120, dotR = 3, dgap = 4, itemGap = 12;
+      const int sy = 124, dotR = 3, dgap = 4, itemGap = 12;
       canvas.setTextDatum(middle_left);
       canvas.setTextColor(COL_TEXT);
       int total = 0;
       for (int i = 0; i < 3; i++) total += dotR * 2 + dgap + canvas.textWidth(L[i]) + (i < 2 ? itemGap : 0);
-      int px = (SCR_W - total) / 2;
+      int qx = (SCR_W - total) / 2;
       for (int i = 0; i < 3; i++) {
-        canvas.fillCircle(px + dotR, sy, dotR, ok[i] ? COL_OK : COL_BAD);
-        px += dotR * 2 + dgap;
-        canvas.drawString(L[i], px, sy);
-        px += canvas.textWidth(L[i]) + itemGap;
+        canvas.fillCircle(qx + dotR, sy, dotR, ok[i] ? COL_OK : COL_BAD);
+        qx += dotR * 2 + dgap;
+        canvas.drawString(L[i], qx, sy);
+        qx += canvas.textWidth(L[i]) + itemGap;
       }
     }
     canvas.pushSprite(0, 0);
@@ -111,7 +145,10 @@ static void boot_prompt() {
   int dd = buf.substring(4, 6).toInt();
   int hh = buf.substring(6, 8).toInt();
   int mi = buf.substring(8, 10).toInt();
-  g_simJD = jd_from_utc(2000 + yy, mo, dd, hh, mi, 0.0);
+  g_simJD = jd_from_utc(2000 + yy, mo, dd, hh, mi, 0.0) - off / 1440.0;
+  g_site.utc_offset_min = off;
+  g_site.last_date = buf.substring(0, 6).toInt();
+  storage_save_config(g_site);
 }
 
 static Vec3 sel_vec(int kind, int idx, double d) {
@@ -182,7 +219,11 @@ static void handle_char(char ch, const Triad& t, double d) {
     case KEY_GNSS_POS:
       if (gnss_pos_valid()) {
         float la, lo;
-        if (gnss_get_pos(la, lo)) { g_lat = la; g_lon = lo; storage_save_pos(la, lo); }
+        if (gnss_get_pos(la, lo)) {
+          g_lat = la; g_lon = lo;
+          g_site.lat = la; g_site.lon = lo;
+          storage_save_config(g_site);
+        }
       } else set_msg("no GNSS position yet", 2500);
       break;
     case KEY_GNSS_TIME:
@@ -196,9 +237,32 @@ static void handle_char(char ch, const Triad& t, double d) {
   }
 }
 
+static void fly_to(const Triad& t, uint8_t kind, uint16_t ref) {
+  Vec3 e;
+  if (kind == SEARCH_CONST) e = { const_xyz[ref][0], const_xyz[ref][1], const_xyz[ref][2] };
+  else e = star_vec_at(ref);
+  const float D2R = (float)M_PI / 180.0f;
+  float alt = alt_of(e, t);
+  cam.azT = az_of(e, t);
+  cam.altT = alt < -88.0f * D2R ? -88.0f * D2R : (alt > 88.0f * D2R ? 88.0f * D2R : alt);
+  if (kind == SEARCH_CONST) {
+    float f = const_fov[ref] * D2R;
+    cam.fovT = f < FOV_MIN * D2R ? FOV_MIN * D2R : (f > FOV_MAX * D2R ? FOV_MAX * D2R : f);
+  }
+  g_follow = false;
+  dismiss_panel();
+  if (alt < 0) set_msg("below horizon", 2500);
+}
+
 static void handle_input(const Triad& t, double d) {
   if (!(M5Cardputer.Keyboard.isChange() && M5Cardputer.Keyboard.isPressed())) return;
   auto ks = M5Cardputer.Keyboard.keysState();
+  if (search_active()) {
+    SearchPick p = search_key(ks);
+    if (p.valid) fly_to(t, p.kind, p.ref);
+    return;
+  }
+  if (ks.tab) { search_open(); return; }
   if (g_sim) {
     for (char ch : ks.word) if (ch == KEY_SIM) g_sim = false;
     if (ks.del) g_sim = false;
@@ -257,8 +321,8 @@ void setup() {
   canvas.setTextFont(&fonts::Font0);
 
   storage_begin();
-  SiteConfig site; storage_load_config(site);
-  g_lat = site.lat; g_lon = site.lon;
+  storage_load_config(g_site);
+  g_lat = g_site.lat; g_lon = g_site.lon;
 #if SCROLL_ENABLE
   scroll_begin();
 #endif
@@ -348,15 +412,18 @@ void loop() {
   canvas.fillScreen(COL_BG);
   draw_horizon(canvas, proj, cam, triad);
   if (showSome) draw_cardinals(canvas, proj, triad);
-  if (showSome) draw_constellations(canvas, proj, triad);
+  float fovDeg = cam.fov * (180.0f / (float)M_PI);
+  if (showSome) draw_constellations(canvas, proj, triad, showAll && fovDeg <= g_site.const_label_fov);
   draw_stars(canvas, proj, triad, showAll);
-  draw_messier(canvas, proj, triad, showAll);
+  draw_messier(canvas, proj, triad, showAll && fovDeg <= g_site.messier_fov);
 
   g_centerB = { -1, 0, 0, false };
   float bbest = 1e9f;
+  Vec3 sunDir = { 1, 0, 0 };
   for (int bi = 0; bi < BODY_COUNT; bi++) {
     SkyBody b = ephem_body(bi, d);
-    draw_body(canvas, proj, triad, b, ephem_name(bi), BODY_COL[bi], showSome);
+    if (bi == SUN) sunDir = vec_from_radec(b.ra, b.dec);
+    draw_body(canvas, proj, triad, b, ephem_name(bi), BODY_COL[bi], showSome, sunDir);
     Vec3 e = vec_from_radec(b.ra, b.dec);
     if (v_dot(e, triad.zenith) < HORIZON_DOT) continue;
     float sx, sy;
@@ -372,13 +439,14 @@ void loop() {
   draw_highlight(canvas, proj, triad, g_selKind, g_selIdx, d);
   draw_panel(canvas, triad, g_selKind, g_selIdx, d, cam.panelX);
   draw_crosshair(canvas, proj.ppx_x);
-  draw_timebar(canvas, g_simJD, TIME_RATES[g_rateIdx], g_paused);
+  draw_timebar(canvas, g_simJD, TIME_RATES[g_rateIdx], g_paused, g_site.utc_offset_min);
   draw_hud(canvas, cam.az, cam.alt);
   if (g_gnssOn && gnss_present())
     draw_sat_indicator(canvas, gnss_fix(), gnss_count_display(),
                        gnss_time_valid(), gnss_pos_valid());
   draw_msg();
 
+  search_draw(canvas);
   canvas.pushSprite(0, 0);
   if (wantShot) do_screenshot(g_simJD, cam.az, cam.alt);
 

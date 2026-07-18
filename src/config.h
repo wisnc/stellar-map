@@ -8,6 +8,11 @@ constexpr int CENTER_Y = SCR_H / 2;
 
 constexpr float DEF_LAT = 0.0f;
 constexpr float DEF_LON = 0.0f;
+constexpr int   DEF_UTC_OFFSET_MIN = 0;
+constexpr int   UTC_OFFSET_MIN_LIMIT = -720;
+constexpr int   UTC_OFFSET_MAX_LIMIT = 840;
+constexpr float DEF_CONST_LABEL_FOV = 30.0f;
+constexpr float DEF_MESSIER_FOV = 30.0f;
 
 constexpr float DEF_AZ  = 180.0f;
 constexpr float DEF_ALT = 0.0f;

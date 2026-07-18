@@ -11,13 +11,22 @@ static bool g_ok = false;
 
 static const char* CONFIG_PATH = "/.stellar_config";
 
-static void write_default(float lat, float lon) {
+static void write_config(const SiteConfig& c) {
+  SD.remove(CONFIG_PATH);
   File f = SD.open(CONFIG_PATH, FILE_WRITE);
   if (!f) return;
   f.println("# Stellar Map config");
   f.println("# Observer location, decimal degrees (N+ / E+)");
-  f.printf("lat=%.4f\n", lat);
-  f.printf("lon=%.4f\n", lon);
+  f.printf("lat=%.4f\n", c.lat);
+  f.printf("lon=%.4f\n", c.lon);
+  f.println("# Local time offset from UTC, +HHMM / -HHMM");
+  f.printf("utc_offset=%+05d\n", (c.utc_offset_min / 60) * 100 + (c.utc_offset_min % 60));
+  f.println("# Last local date entered at the time prompt, YYMMDD");
+  f.printf("last_known_date=%06d\n", c.last_date);
+  f.println("# Constellation names draw at or below this field of view, degrees");
+  f.printf("const_fov_label=%.1f\n", c.const_label_fov);
+  f.println("# Messier objects draw at or below this field of view, degrees");
+  f.printf("messier_fov=%.1f\n", c.messier_fov);
   f.close();
 }
 
@@ -31,10 +40,14 @@ bool storage_ok() { return g_ok; }
 
 void storage_load_config(SiteConfig& c) {
   c.lat = DEF_LAT; c.lon = DEF_LON;
+  c.utc_offset_min = DEF_UTC_OFFSET_MIN;
+  c.last_date = 0;
+  c.const_label_fov = DEF_CONST_LABEL_FOV;
+  c.messier_fov = DEF_MESSIER_FOV;
   if (!g_ok) return;
 
   if (!SD.exists(CONFIG_PATH)) {
-    write_default(c.lat, c.lon);
+    write_config(c);
     return;
   }
   File f = SD.open(CONFIG_PATH, FILE_READ);
@@ -49,13 +62,27 @@ void storage_load_config(SiteConfig& c) {
     String val = line.substring(eq + 1);  val.trim();
     if (key == "lat") c.lat = val.toFloat();
     else if (key == "lon") c.lon = val.toFloat();
+    else if (key == "utc_offset") {
+      int v = val.toInt();
+      c.utc_offset_min = (v / 100) * 60 + (v % 100);
+    }
+    else if (key == "last_known_date") c.last_date = val.toInt();
+    else if (key == "const_fov_label") c.const_label_fov = val.toFloat();
+    else if (key == "messier_fov") c.messier_fov = val.toFloat();
   }
   f.close();
+  if (c.utc_offset_min < UTC_OFFSET_MIN_LIMIT) c.utc_offset_min = UTC_OFFSET_MIN_LIMIT;
+  if (c.utc_offset_min > UTC_OFFSET_MAX_LIMIT) c.utc_offset_min = UTC_OFFSET_MAX_LIMIT;
+  if (c.last_date < 0 || c.last_date > 999999) c.last_date = 0;
+  if (c.const_label_fov < FOV_MIN) c.const_label_fov = FOV_MIN;
+  if (c.const_label_fov > FOV_MAX) c.const_label_fov = FOV_MAX;
+  if (c.messier_fov < FOV_MIN) c.messier_fov = FOV_MIN;
+  if (c.messier_fov > FOV_MAX) c.messier_fov = FOV_MAX;
 }
 
-bool storage_save_pos(float lat, float lon) {
+bool storage_save_config(const SiteConfig& c) {
   if (!g_ok) return false;
-  write_default(lat, lon);
+  write_config(c);
   return true;
 }
 

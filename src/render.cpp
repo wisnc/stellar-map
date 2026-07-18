@@ -5,6 +5,7 @@
 #include "data/star_names.h"
 #include "data/constellations.h"
 #include "data/messier.h"
+#include "data/map_labels.h"
 #include <cmath>
 #include <cstdio>
 
@@ -144,6 +145,14 @@ static uint16_t class_color(const char* spect, int16_t ci, float b) {
   return rgb565((uint8_t)(255 * b * r), (uint8_t)(255 * b * g), (uint8_t)(255 * b * bl));
 }
 
+static const char* map_label_for(int i) {
+  for (int k = 0; k < MAP_LABEL_COUNT; k++) {
+    if (map_label_idx[k] == i) return map_label_txt[k];
+    if (map_label_idx[k] > i) break;
+  }
+  return star_label[i];
+}
+
 void draw_stars(M5Canvas& g, const Projector& p, const Triad& t, bool labels) {
   g_center = { -1, 0, 0, false };
   float bestD2 = 1e9f;
@@ -161,7 +170,7 @@ void draw_stars(M5Canvas& g, const Projector& p, const Triad& t, bool labels) {
     if (rad > 0) g.fillCircle((int)sx, (int)sy, rad, col);
     else g.drawPixel((int)sx, (int)sy, col);
     if (labels && mag <= BRIGHT_LABEL_MAG) {
-      const char* lb = star_label[i];
+      const char* lb = map_label_for(i);
       if (lb && lb[0] && !(lb[0] == 'H' && lb[1] == 'I' && lb[2] == 'P')) {
         g.setTextColor(COL_LABEL);
         g.drawString(lb, (int)sx + rad + 3, (int)sy);
@@ -195,17 +204,33 @@ void draw_messier(M5Canvas& g, const Projector& p, const Triad& t, bool show) {
   if (bestD2 > (float)(SELECT_RADIUS_PX * SELECT_RADIUS_PX)) g_centerM.valid = false;
 }
 
-void draw_constellations(M5Canvas& g, const Projector& p, const Triad& t) {
+void draw_constellations(M5Canvas& g, const Projector& p, const Triad& t, bool labels) {
   if (CONST_SEG_COUNT <= 0) return;
+  static float accx[CONST_COUNT], accy[CONST_COUNT];
+  static uint16_t accn[CONST_COUNT];
+  if (labels)
+    for (int i = 0; i < CONST_COUNT; i++) { accx[i] = 0; accy[i] = 0; accn[i] = 0; }
   for (int s = 0; s < CONST_SEG_COUNT; s++) {
     Vec3 ea = star_vec_at(const_seg[s][0]);
     Vec3 eb = star_vec_at(const_seg[s][1]);
     float ax, ay, bx, by;
     if (!project(p, ea, ax, ay)) continue;
     if (!project(p, eb, bx, by)) continue;
+    if (labels) {
+      int ci = const_seg_con[s];
+      if (ax >= 0 && ax <= SCR_W && ay >= 0 && ay <= SCR_H) { accx[ci] += ax; accy[ci] += ay; accn[ci]++; }
+      if (bx >= 0 && bx <= SCR_W && by >= 0 && by <= SCR_H) { accx[ci] += bx; accy[ci] += by; accn[ci]++; }
+    }
     ax = clampf(ax, -2000, 2000); ay = clampf(ay, -2000, 2000);
     bx = clampf(bx, -2000, 2000); by = clampf(by, -2000, 2000);
     g.drawLine((int)ax, (int)ay, (int)bx, (int)by, COL_CONST);
+  }
+  if (!labels) return;
+  g.setTextDatum(middle_center);
+  g.setTextColor(COL_STAR);
+  for (int i = 0; i < CONST_COUNT; i++) {
+    if (accn[i] == 0) continue;
+    g.drawString(const_name[i], (int)(accx[i] / accn[i]), (int)(accy[i] / accn[i]));
   }
 }
 
@@ -237,32 +262,42 @@ void draw_cardinals(M5Canvas& g, const Projector& p, const Triad& t) {
   }
 }
 
-static void draw_moon_disk(M5Canvas& g, int cx, int cy, int r, float k, bool waxing) {
-  g.fillCircle(cx, cy, r, rgb565(45, 45, 52));
-  for (int dy = -r; dy <= r; dy++) {
-    float w = sqrtf((float)(r * r - dy * dy));
-    float xt = (1.0f - 2.0f * k) * w;
-    int y = cy + dy;
-    if (waxing) {
-      int x0 = (int)lroundf(cx + xt), x1 = (int)lroundf(cx + w);
-      if (x1 >= x0) g.drawFastHLine(x0, y, x1 - x0 + 1, COL_MOON);
-    } else {
-      int x0 = (int)lroundf(cx - w), x1 = (int)lroundf(cx - xt);
-      if (x1 >= x0) g.drawFastHLine(x0, y, x1 - x0 + 1, COL_MOON);
+static float limb_angle(const Projector& p, const Vec3& m, const Vec3& sunDir) {
+  Vec3 t = v_add(sunDir, v_scale(m, -v_dot(sunDir, m)));
+  float len = sqrtf(v_dot(t, t));
+  if (len < 1e-4f) return 0.0f;
+  t = v_scale(t, 1.0f / len);
+  return atan2f(-v_dot(t, p.up), v_dot(t, p.right));
+}
+
+static void draw_moon_disk(M5Canvas& g, int cx, int cy, int r, float k, float ang) {
+  const uint16_t dark = rgb565(45, 45, 52);
+  const float ca = cosf(ang), sa = sinf(ang);
+  const float rr = (float)(r * r);
+  const float term = 1.0f - 2.0f * k;
+  for (int py = -r; py <= r; py++) {
+    for (int px = -r; px <= r; px++) {
+      if (px * px + py * py > r * r) continue;
+      float u =  px * ca + py * sa;
+      float v = -px * sa + py * ca;
+      float q = rr - v * v;
+      float w = q > 0.0f ? sqrtf(q) : 0.0f;
+      g.drawPixel(cx + px, cy + py, (u >= term * w) ? COL_MOON : dark);
     }
   }
   g.drawCircle(cx, cy, r, rgb565(120, 120, 130));
 }
 
 void draw_body(M5Canvas& g, const Projector& p, const Triad& t,
-               const SkyBody& b, const char* name, uint16_t color, bool label) {
+               const SkyBody& b, const char* name, uint16_t color, bool label,
+               const Vec3& sunDir) {
   Vec3 e = vec_from_radec(b.ra, b.dec);
   if (v_dot(e, t.zenith) < sinf(-1.0f * DEG)) return;
   float sx, sy;
   if (!project(p, e, sx, sy) || !on_screen(sx, sy, 8)) return;
   int ix = (int)sx, iy = (int)sy, rad;
   if (b.isMoon) {
-    draw_moon_disk(g, ix, iy, MOON_R, b.phase, b.waxing);
+    draw_moon_disk(g, ix, iy, MOON_R, b.phase, limb_angle(p, e, sunDir));
     rad = MOON_R;
   } else {
     rad = (b.mag < -2.0f) ? 3 : (b.mag < 1.0f ? 2 : 1);
@@ -470,11 +505,12 @@ void draw_crosshair(M5Canvas& g, float axisX) {
   g.drawFastVLine(x, y + 3, 3, c);
 }
 
-void draw_timebar(M5Canvas& g, double simJD, float rate, bool paused) {
-  double f = simJD + 0.5; double day = f - floor(f); double H = day * 24.0;
+void draw_timebar(M5Canvas& g, double simJD, float rate, bool paused, int utcOffsetMin) {
+  double f = simJD + utcOffsetMin / 1440.0 + 0.5; double day = f - floor(f); double H = day * 24.0;
   int hh = (int)H; int mm = (int)((H - hh) * 60.0);
-  char t1[20], t2[16];
-  snprintf(t1, sizeof(t1), "%02d:%02d UT", hh, mm);
+  char t1[24], t2[16];
+  snprintf(t1, sizeof(t1), "%02d:%02d %+05d", hh, mm,
+           (utcOffsetMin / 60) * 100 + (utcOffsetMin % 60));
   if (paused) snprintf(t2, sizeof(t2), "PAUSE");
   else if (rate <= 1.0f) snprintf(t2, sizeof(t2), "x1");
   else snprintf(t2, sizeof(t2), "x%g", rate);

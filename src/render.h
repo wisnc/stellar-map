@@ -42,15 +42,16 @@ float       messier_mag_at(int i);
 
 void draw_horizon(M5Canvas& g, const Projector& p, const Camera& c, const Triad& t);
 void draw_cardinals(M5Canvas& g, const Projector& p, const Triad& t);
-void draw_constellations(M5Canvas& g, const Projector& p, const Triad& t);
+void draw_constellations(M5Canvas& g, const Projector& p, const Triad& t, bool labels);
 void draw_stars(M5Canvas& g, const Projector& p, const Triad& t, bool labels);
 void draw_messier(M5Canvas& g, const Projector& p, const Triad& t, bool show);
 void draw_body(M5Canvas& g, const Projector& p, const Triad& t,
-               const SkyBody& b, const char* name, uint16_t color, bool label);
+               const SkyBody& b, const char* name, uint16_t color, bool label,
+               const Vec3& sunDir);
 void draw_highlight(M5Canvas& g, const Projector& p, const Triad& t, int kind, int idx, double d);
 void draw_panel(M5Canvas& g, const Triad& t, int kind, int idx, double d, float panelX);
 void draw_hud(M5Canvas& g, float az_rad, float alt_rad);
 void draw_crosshair(M5Canvas& g, float axisX);
 void draw_satellites(M5Canvas& g, const Projector& p, const Triad& t);
 void draw_sat_indicator(M5Canvas& g, bool fixValid, int count, bool timeOK, bool posOK);
-void draw_timebar(M5Canvas& g, double simJD, float rate, bool paused);
+void draw_timebar(M5Canvas& g, double simJD, float rate, bool paused, int utcOffsetMin);

@@ -66,10 +66,12 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 `g` GNSS polling toggle (off by default. if CapLora is available, press it to fetch for time and location)
 
-`p` when time is resolved, 'p' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
+`p` when position is resolved, 'p' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
 
 `t` when time is resolved, 't' below the satellite icon at the top right will be displayed. does nothing when unresolved yet
 
+`[ ]` previous 30 mins and skip 30 mins
+ 
 `enter` to select nearest center object and keeps it centered and shows information panel
 
 `del` dismiss
@@ -80,6 +82,6 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 if CapLora is available, be sure to press `g` to start polling for time and location. **keep in mind that the polling will cause Stellar Map to stutter** so toggle it off when satisfied. 
 
-### credits
+### Acknowledgements
 
 thanks for HYG database, OpenNGC, and Stellarium modern constellation lines.
