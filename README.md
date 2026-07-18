@@ -22,6 +22,10 @@ saturn scope/simulation
 
 <img src="saturn.bmp" width="600">
 
+search for alpha centauri
+
+<img src="search.bmp" width="300">
+<img src="result.bmp" width="300">
 
 ---
 
@@ -41,7 +45,24 @@ on initial boot, a `/.stellar_config` file will be created. make sure to edit it
 
 check out [crub](https://github.com/wisnc/crub) for a firmware flasher with a built in editor
 
+the config also includes keys that control label visibility
 
+```
+const_fov_label=30.0
+messier_fov=30.0
+```
+
+are set by default, value is for maximum FOV the constellations and messier object labels are displayed.
+
+utc offset is also a key in the config, but configureable on boot by 
+
+`;` for +1 hour offset
+
+`.` for -1 hour offset
+
+`,` for -15 min offset
+
+`/` for +15 min offset
 
 ## Boot
 
@@ -51,6 +72,7 @@ No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also
 
 ## Controls
 
+`tab`	enter search mode
 
 `; , . /` pan (arrow keys) controls AZ and ALT
 
