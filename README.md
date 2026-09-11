@@ -72,6 +72,8 @@ Prompts for UTC as **`YYMMDDHHMM`** e.g. for May 31 2026 12AM UTC, input `260531
 
 No battery-backed RTC, so the time needs to be re-entered each boot. UTC is also used because it is cleaner, and CapLora retrieves UTC first before your local time since fix takes longer
 
+july update allowed shifting timezone to your local time. format is the same **`YYMMDDHHMM`**
+
 ## Controls
 
 `tab`	enter search mode
